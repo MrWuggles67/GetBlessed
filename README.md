@@ -10,6 +10,7 @@ An iPhone application that can help complete strangers get blessed and help pay 
 | `backend/` | Node.js REST API (Express 5) the app talks to |
 | `database/schema.sql` | MySQL 8 schema for members, bills and bill items |
 | `docker-compose.yml` | Runs MySQL + the API locally |
+| `demo/` | Browser demo of the app (runs on any phone, no install or server). Run `demo/fetch-ocr.sh` once to download its text reader, then serve the folder. |
 
 ## How it works
 

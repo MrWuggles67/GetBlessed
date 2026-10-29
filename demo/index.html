@@ -1,0 +1,982 @@
+<meta charset="utf-8">
+<title>GetBlessed Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GetBlessed">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one phone-width app column (full screen on a phone, a device frame on desktop), screens swap inside it, sheets slide up from the bottom. */
+:root {
+  --ground: #E9EEF2;      /* page behind the device */
+  --bg: #F7F9FB;          /* app background */
+  --surface: #FFFFFF;
+  --ink: #18222E;
+  --muted: #5D6B7A;
+  --line: #DCE3EA;
+  --accent: #1F7A57;      /* blessing green */
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E1F2EA;
+  --gold: #C98A12;        /* plan / fee highlight */
+  --gold-soft: #FBF1DC;
+  --warn: #A45A00;
+  --warn-soft: #FDF0DF;
+  --danger: #B3261E;
+  --paper: #FFFFFF;
+  --shadow: 0 1px 2px rgba(24,34,46,.06), 0 8px 24px rgba(24,34,46,.08);
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --ground: #0B1016; --bg: #111820; --surface: #19222C; --ink: #E8EEF3; --muted: #93A1AF; --line: #2A3542;
+  --accent: #46B386; --accent-ink: #06140E; --accent-soft: #173327; --gold: #E5B04B; --gold-soft: #33280F;
+  --warn: #F0A24A; --warn-soft: #35250F; --danger: #FF8A80; --paper: #F4F1EA; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --ground: #0B1016; --bg: #111820; --surface: #19222C; --ink: #E8EEF3; --muted: #93A1AF; --line: #2A3542;
+  --accent: #46B386; --accent-ink: #06140E; --accent-soft: #173327; --gold: #E5B04B; --gold-soft: #33280F;
+  --warn: #F0A24A; --warn-soft: #35250F; --danger: #FF8A80; --paper: #F4F1EA; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ground); color: var(--ink); font: 400 16px/1.45 var(--f-body); -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+
+.stage { min-height: 100%; display: grid; place-items: start center; padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.device { width: 100%; max-width: 420px; height: min(860px, calc(100vh - 48px)); background: var(--bg); border-radius: 36px; box-shadow: var(--shadow), 0 0 0 10px var(--surface), 0 0 0 11px var(--line); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+@media (max-width: 520px) {
+  .stage { padding: 0; display: block; height: 100%; }
+  .device { max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
+}
+
+.demo-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; background: var(--gold-soft); color: var(--ink); font-size: 12.5px; border-bottom: 1px solid var(--line); }
+.demo-bar b { color: var(--gold); letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
+.linkish { background: none; border: 0; padding: 4px 0; color: var(--accent); font-weight: 600; cursor: pointer; font-size: inherit; }
+
+.topbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 8px; min-height: 56px; }
+.topbar h1 { font: 800 26px/1.1 var(--f-display); margin: 0; flex: 1; text-wrap: balance; letter-spacing: -.01em; }
+.topbar .small-title { font: 600 17px/1.2 var(--f-body); flex: 1; text-align: center; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; flex: none; }
+.icon-btn svg { width: 20px; height: 20px; }
+
+.screen { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 16px 28px; display: flex; flex-direction: column; gap: 16px; }
+.screen > * { flex-shrink: 0; }
+.sheet > * { flex-shrink: 0; }
+.group { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.group-label { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 4px 4px -8px; }
+.group-note { font-size: 13px; color: var(--muted); margin: -8px 4px 0; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 48px; }
+.row + .row { border-top: 1px solid var(--line); }
+.row .grow { flex: 1; min-width: 0; }
+.row .value { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.row.total .grow, .row.total .value { font-weight: 800; font-size: 17px; }
+.field { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; }
+.field + .field { border-top: 1px solid var(--line); }
+.field label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.field input, .field textarea, .field select { border: 0; background: transparent; padding: 2px 0; font-size: 16px; outline: none; width: 100%; }
+.field textarea { resize: vertical; min-height: 44px; }
+.money-input { display: flex; align-items: baseline; gap: 2px; }
+.money-input span { color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 20px; border-radius: 14px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px; cursor: pointer; width: 100%; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.btn.gold { background: var(--gold); color: #1E1505; }
+.btn.small { min-height: 38px; width: auto; font-size: 14px; padding: 0 14px; border-radius: 11px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.hstack { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.hero { padding: 28px 4px 4px; display: flex; flex-direction: column; gap: 10px; }
+.hero .mark { width: 64px; height: 64px; border-radius: 20px; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); }
+.hero h2 { font: 800 40px/1 var(--f-display); margin: 6px 0 0; letter-spacing: -.02em; }
+.hero p { margin: 0; color: var(--muted); font-size: 17px; max-width: 32ch; }
+.role-card { display: flex; gap: 14px; align-items: center; text-align: left; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; width: 100%; }
+.role-card .ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; }
+.role-card.billable .ico { background: var(--accent-soft); color: var(--accent); }
+.role-card.blessings .ico { background: var(--gold-soft); color: var(--gold); }
+.role-card strong { display: block; font-size: 17px; }
+.role-card span { color: var(--muted); font-size: 14px; }
+.role-card .chev { margin-left: auto; color: var(--muted); }
+
+.notice { display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; font-size: 14px; }
+.notice.info { background: var(--accent-soft); }
+.notice.warn { background: var(--warn-soft); color: var(--ink); }
+.notice.warn svg { color: var(--warn); }
+.notice.error { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); }
+.notice svg { flex: none; width: 18px; height: 18px; margin-top: 2px; }
+
+.bill-card { display: flex; gap: 12px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; text-align: left; width: 100%; align-items: center; }
+.bill-card .thumb { width: 56px; height: 72px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); object-fit: cover; object-position: top; flex: none; }
+.bill-card .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bill-card .meta strong { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bill-card .meta span { font-size: 13px; color: var(--muted); }
+.bill-card .amt { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-variant-numeric: tabular-nums; }
+.bill-card .amt b { font-size: 17px; }
+.progress { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; letter-spacing: .03em; }
+.badge.open { background: var(--warn-soft); color: var(--warn); }
+.badge.blessed { background: var(--accent-soft); color: var(--accent); }
+.badge.sample { background: var(--line); color: var(--muted); }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 7px 14px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.photo { background: var(--paper); border-radius: 14px; border: 1px solid var(--line); display: block; width: 100%; max-height: 300px; object-fit: contain; }
+.receipt-lines { font-family: var(--f-mono); font-size: 13px; }
+.item-row { display: grid; grid-template-columns: 1fr 52px 92px 28px; gap: 6px; align-items: center; padding: 8px 10px; }
+.item-row + .item-row { border-top: 1px solid var(--line); }
+.item-row input { border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 8px; font-size: 15px; min-width: 0; width: 100%; }
+.item-row input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.item-row .del { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 20px; line-height: 1; }
+.item-head { font-size: 11.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 10px 10px 0; display: grid; grid-template-columns: 1fr 52px 92px 28px; gap: 6px; }
+.item-head span:nth-child(2), .item-head span:nth-child(3) { text-align: right; }
+
+.plan { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; width: 100%; background: none; border: 0; text-align: left; }
+.plan + .plan { border-top: 1px solid var(--line); }
+.plan .radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+.plan[aria-checked="true"] .radio { border-color: var(--accent); }
+.plan[aria-checked="true"] .radio::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.plan .grow { flex: 1; }
+.plan strong { display: block; }
+.plan small { color: var(--muted); }
+.plan .price { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 17px; }
+.plan .save { font-size: 11px; font-weight: 700; color: var(--gold); background: var(--gold-soft); border-radius: 99px; padding: 2px 7px; margin-left: 6px; }
+
+.empty { text-align: center; padding: 40px 16px; color: var(--muted); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.empty h3 { margin: 0; color: var(--ink); font: 700 20px var(--f-display); }
+
+.scan-status { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.scan-status .bar { height: 8px; border-radius: 8px; background: var(--line); overflow: hidden; }
+.scan-status .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(10,15,20,.45); display: flex; align-items: flex-end; z-index: 20; animation: fade .18s ease-out; }
+.sheet { width: 100%; max-height: 92%; overflow-y: auto; background: var(--bg); border-radius: 24px 24px 0 0; padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; animation: rise .22s ease-out; }
+.sheet .grabber { width: 40px; height: 5px; border-radius: 5px; background: var(--line); margin: 0 auto 2px; }
+.sheet h3 { margin: 0; font: 800 22px/1.15 var(--f-display); }
+.appstore { background: var(--surface); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); }
+.appstore .sku { display: flex; gap: 12px; align-items: center; }
+.appstore .sku .mark { width: 48px; height: 48px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.toast { position: absolute; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 14px; font-weight: 600; z-index: 30; animation: rise .2s ease-out; }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } }
+@keyframes fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); }
+.num { font-variant-numeric: tabular-nums; }
+.center { text-align: center; }
+details.raw summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 10px 14px; }
+details.raw pre { margin: 0; padding: 0 14px 12px; white-space: pre-wrap; font: 12px/1.5 var(--f-mono); color: var(--muted); overflow-x: auto; }
+</style>
+
+<div class="stage">
+  <div class="device" id="device">
+    <div class="demo-bar"><span><b>Demo</b> &nbsp;No real money. Data stays on this device.</span><button class="linkish" id="demo-menu-btn" type="button">Demo menu</button></div>
+    <div id="app" style="flex:1;display:flex;flex-direction:column;min-height:0"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+"use strict";
+// ---------------------------------------------------------------------------
+// Pricing (mirrors backend/src/pricing.js)
+// ---------------------------------------------------------------------------
+const PLANS = [
+  { id: "monthly", name: "Monthly", period: "month", priceCents: 999, note: "Renews every month" },
+  { id: "yearly", name: "1-Year", period: "year", priceCents: 6999, note: "Renews every year", save: "Save 42%" },
+  { id: "two_year", name: "2-Year", period: "2 years", priceCents: 10499, note: "One payment for 2 years, doesn't renew", save: "Save 56%" },
+];
+const TIP_FEE_CENTS = 199, TIP_PER_CENTS = 80000;
+const tipFee = (cents) => cents > 0 ? TIP_FEE_CENTS * Math.ceil(cents / TIP_PER_CENTS) : 0;
+
+// ---------------------------------------------------------------------------
+// Receipt parser (a JavaScript port of ios/BillParser/ReceiptParser.swift)
+// ---------------------------------------------------------------------------
+const Parser = (() => {
+  const AMOUNT = /^(.*?)\s*(-)?\s*\$?\s*(\d{1,3}(?:,\d{3})+|\d+)[.,](\d{2})\s*(-)?(?:\s+[A-Z*]{1,2})?$/;
+  const QTY_AT = /^(.*?)\s*(\d+(?:\.\d+)?)\s*(?:lb|lbs|kg|oz|ea)?\s*(?:@|x|X|×)\s*\$?(\d+\.\d{2})\s*(?:\/\s*(?:lb|kg|oz|ea))?\s*(?:ea)?$/;
+  const LEAD_QTY = /^(\d{1,3})\s*(?:x|X|×|@)?\s+(.+)$/;
+  const UNITS = new Set(["oz","lb","lbs","ml","l","g","kg","ct","pk","pc","in","ft","gal","qt","pt"]);
+  const cents = (whole, frac) => Number(whole.replace(/,/g, "")) * 100 + Number(frac);
+
+  function classify(label) {
+    const t = " " + label.toLowerCase().replace(/[^a-z ]/g, " ").replace(/ +/g, " ").trim() + " ";
+    const has = (ws) => ws.some((w) => t.includes(" " + w + " "));
+    if (has(["subtotal","sub total","sub ttl","subttl","net total","merchandise total"])) return "subtotal";
+    if (has(["total savings","you saved","total items","items sold","total discount","savings"])) return "ignored";
+    if (has(["total","ttl","amount due","balance due","total due","amount owed","please pay","new balance","current balance","grand total","pay this amount"])) return "total";
+    if (has(["tax","taxes","sales tax","vat","gst","hst","pst","state tax","city tax"])) return "tax";
+    if (has(["change","change due","cash","visa","mastercard","master card","amex","discover","debit","credit","tender","tendered","payment","paid","auth","approval","acct","discount","coupon","promo","rounding","previous balance","balance forward","points"])) return "ignored";
+    return "item";
+  }
+  function splitAmount(row) {
+    const m = row.match(AMOUNT);
+    if (!m) return null;
+    let c = cents(m[3], m[4]);
+    if (m[2] || m[5]) c = -c;
+    return { label: (m[1] || "").trim(), cents: c };
+  }
+  function splitQuantity(label) {
+    let m = label.match(QTY_AT);
+    if (m && Number(m[2]) > 0) return { name: m[1] || "", qty: Number(m[2]), unitCents: Math.round(Number(m[3]) * 100) };
+    m = label.match(LEAD_QTY);
+    if (m) {
+      const qty = Number(m[1]); const rest = m[2];
+      const first = (rest.split(" ")[0] || "").toLowerCase();
+      if (qty > 1 && qty <= 99 && !UNITS.has(first) && /^\p{L}/u.test(rest)) return { name: rest, qty, unitCents: null };
+    }
+    return { name: label, qty: 1, unitCents: null };
+  }
+  const tidy = (n) => n.replace(/\b\d{5,}\b/g, "").replace(/^[\s\-–.:*#]+|[\s\-–.:*#@]+$/g, "").replace(/ {2,}/g, " ").trim();
+  const wordy = (t) => (t.match(/\p{L}/gu) || []).length >= 2;
+  // OCR often reads a zero next to digits as the letter O.
+  const fixDigits = (r) => r.replace(/(\d[.,]?)[Oo]/g, "$10").replace(/[Oo]([.,]?\d)/g, "0$1").replace(/\s+/g, " ").trim();
+
+  function parse(rows) {
+    const items = []; const totals = [];
+    let tax = 0, printedSubtotal = null, merchant = null, pending = null;
+    for (const raw of rows) {
+      const row = fixDigits(raw);
+      if (!row) continue;
+      const split = splitAmount(row);
+      if (!split) {
+        if (merchant === null && !items.length && !totals.length && wordy(row)) merchant = row;
+        else if (!totals.length && wordy(row) && classify(row) === "item") pending = row;
+        else pending = null;
+        continue;
+      }
+      const kind = classify(split.label);
+      if (kind === "total") totals.push(split.cents);
+      else if (kind === "subtotal") printedSubtotal = split.cents;
+      else if (kind === "tax") tax += split.cents;
+      else if (kind === "item" && !totals.length && split.cents > 0) {
+        let { name, qty, unitCents } = splitQuantity(split.label);
+        if (!name && pending) name = pending;
+        name = tidy(name);
+        if (name && wordy(name)) {
+          items.push({ name, qty, lineCents: split.cents, unitCents: unitCents ?? Math.round(split.cents / qty) });
+        }
+      }
+      pending = null;
+    }
+    const sum = items.reduce((s, i) => s + i.lineCents, 0);
+    const subtotal = items.length ? sum : (printedSubtotal ?? 0);
+    const printed = totals.length ? Math.max(...totals) : null;
+    return { merchant, items, subtotal, tax, total: printed ?? subtotal + tax, totalWasPrinted: printed !== null };
+  }
+  return { parse };
+})();
+
+// ---------------------------------------------------------------------------
+// Sample bills: drawn as receipt images so the text reader reads them for real
+// ---------------------------------------------------------------------------
+const SAMPLES = {
+  grocery: { title: "Groceries for the week", lines: [
+    ["c", "CORNER MARKET"], ["c", "418 Elm Street"], ["c", "10/24/2026  5:42 PM"], ["-"],
+    ["r", "MILK 2% GAL", "4.29"], ["r", "BREAD WHEAT", "3.49"], ["r", "EGGS LARGE DOZEN", "3.99"],
+    ["r", "2 x CHICKEN BREAST", "13.98"], ["r", "RICE 5LB", "6.79"], ["r", "BANANAS", "1.84"], ["-"],
+    ["r", "SUBTOTAL", "34.38"], ["r", "TAX", "1.12"], ["r", "TOTAL", "35.50"], ["r", "VISA", "35.50"], ["c", "THANK YOU"],
+  ] },
+  electric: { title: "Electric bill", lines: [
+    ["c", "CITY POWER & LIGHT"], ["c", "Statement date 10/02/2026"], ["l", "Account 0045821-7"], ["-"],
+    ["r", "Previous Balance", "141.10"], ["r", "Payment Received", "-141.10"],
+    ["r", "Electric Service", "112.40"], ["r", "Delivery Charge", "24.15"], ["r", "Taxes", "6.81"], ["-"],
+    ["r", "Amount Due", "143.36"], ["c", "Due by 11/01/2026"],
+  ] },
+  pharmacy: { title: "Prescriptions", lines: [
+    ["c", "WELLSPRING PHARMACY"], ["c", "Rx Pickup"], ["-"],
+    ["r", "INSULIN GLARGINE", "98.00"], ["r", "TEST STRIPS 50CT", "34.99"], ["r", "LANCETS", "8.49"], ["-"],
+    ["r", "SUBTOTAL", "141.48"], ["r", "TAX", "0.68"], ["r", "TOTAL", "142.16"],
+  ] },
+  diner: { title: "Family dinner", lines: [
+    ["c", "JOE'S DINER"], ["-"],
+    ["r", "2 x CHEESEBURGER", "21.98"], ["r", "3 COFFEE", "7.50"], ["r", "KIDS PANCAKES", "6.25"], ["r", "FRIES 2 @ 3.25", "6.50"], ["-"],
+    ["r", "SUBTOTAL", "42.23"], ["r", "TAX", "3.48"], ["r", "TOTAL", "45.71"],
+  ] },
+};
+const sampleImageCache = {};
+function sampleImage(key) {
+  if (sampleImageCache[key]) return sampleImageCache[key];
+  const lines = SAMPLES[key].lines;
+  const W = 640, lh = 40, pad = 40;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = pad * 2 + lines.length * lh;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fffdf8"; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = "#1b1b1b"; g.font = "500 26px 'IBM Plex Mono', Menlo, monospace"; g.textBaseline = "middle";
+  lines.forEach((l, i) => {
+    const y = pad + i * lh + lh / 2;
+    if (l[0] === "-") { g.fillRect(pad, y, W - pad * 2, 2); return; }
+    if (l[0] === "c") { g.textAlign = "center"; g.fillText(l[1], W / 2, y); }
+    if (l[0] === "l") { g.textAlign = "left"; g.fillText(l[1], pad, y); }
+    if (l[0] === "r") { g.textAlign = "left"; g.fillText(l[1], pad, y); g.textAlign = "right"; g.fillText(l[2], W - pad, y); }
+  });
+  return (sampleImageCache[key] = c.toDataURL("image/png"));
+}
+
+// ---------------------------------------------------------------------------
+// Text reader (Tesseract, bundled with the demo so it runs offline-capable)
+// ---------------------------------------------------------------------------
+let ocrWorkerPromise = null;
+function ocrWorker(onStatus) {
+  ocrStatusListener = onStatus;
+  if (!ocrWorkerPromise) {
+    const base = new URL("ocr/", location.href).href;
+    onStatus?.("Getting the text reader ready (first time only)", 0.05, false);
+    ocrWorkerPromise = Tesseract.createWorker("eng", 1, {
+      workerPath: base + "worker.js",   // includes a shim that loads the model from lang/eng.traineddata.txt
+      corePath: base + "core",
+      langPath: base + "lang",
+      workerBlobURL: false,
+      cacheMethod: "none",
+      logger: (m) => ocrLogger(m),
+    }).catch((err) => { ocrWorkerPromise = null; throw err; });
+  }
+  return ocrWorkerPromise;
+}
+let ocrStatusListener = null;
+function ocrLogger(m) {
+  if (!ocrStatusListener) return;
+  const label = m.status === "recognizing text" ? "Reading the items on your bill" : "Getting the text reader ready (first time only)";
+  ocrStatusListener(label, m.progress || 0, m.status === "recognizing text");
+}
+async function readBill(imageSrc, onStatus) {
+  const worker = await ocrWorker(onStatus);
+  await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1" });
+  const { data } = await worker.recognize(imageSrc);
+  const rows = (data.lines || []).map((l) => l.text.trim()).filter(Boolean);
+  return { rows, raw: rows.join("\n"), parsed: Parser.parse(rows) };
+}
+
+// ---------------------------------------------------------------------------
+// Demo data (kept in this browser only)
+// ---------------------------------------------------------------------------
+const KEY = "getblessed-demo-v1";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const daysAgo = (d) => Date.now() - d * 86400000;
+function seed() {
+  const users = [
+    { id: "u-maria", email: "maria@demo.app", password: "demo1234", displayName: "Maria", role: "billable" },
+    { id: "u-devon", email: "devon@demo.app", password: "demo1234", displayName: "Devon", role: "billable", sample: true },
+    { id: "u-alicia", email: "alicia@demo.app", password: "demo1234", displayName: "Alicia", role: "billable", sample: true },
+    { id: "u-grace", email: "grace@demo.app", password: "demo1234", displayName: "Grace", role: "blessings", annualIncomeCents: 18500000, plan: "yearly", planExpires: daysAgo(-300) },
+  ];
+  const fromSample = (key, userId, age, extra = {}) => {
+    const p = Parser.parse(SAMPLES[key].lines.filter((l) => l[0] !== "-").map((l) => l.slice(1).join("  ")));
+    return { id: "b-" + key, userId, title: SAMPLES[key].title, merchant: p.merchant, description: extra.description || "", image: "sample:" + key,
+      items: p.items, tax: p.tax, total: p.total, subtotal: p.subtotal, blessedCents: extra.blessedCents || 0, createdAt: daysAgo(age), sample: true };
+  };
+  const bills = [
+    fromSample("pharmacy", "u-devon", 1, { description: "My insurance changed and I'm short on my diabetes supplies this month." }),
+    fromSample("electric", "u-alicia", 2, { description: "Single mom of two. Any help keeping the lights on is a blessing.", blessedCents: 5000 }),
+    fromSample("grocery", "u-maria", 4, { description: "Between jobs right now." }),
+  ];
+  const blessings = [{ id: "s1", billId: "b-electric", userId: "u-grace", amountCents: 5000, feeCents: 199, createdAt: daysAgo(1) }];
+  return { users, bills, blessings, currentUserId: null };
+}
+let db;
+function load() {
+  try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch {}
+  return seed();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch { /* storage full or blocked: the demo keeps working for this visit */ }
+}
+db = load();
+
+const me = () => db.users.find((u) => u.id === db.currentUserId) || null;
+const userById = (id) => db.users.find((u) => u.id === id);
+const billImage = (b) => b.image.startsWith("sample:") ? sampleImage(b.image.slice(7)) : b.image;
+const hasPlan = (u) => u && u.role === "blessings" && u.plan && u.planExpires > Date.now();
+const remaining = (b) => Math.max(0, b.total - b.blessedCents);
+const status = (b) => remaining(b) === 0 ? "blessed" : "open";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (c) => (c < 0 ? "-" : "") + "$" + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const toCents = (v) => { const s = String(v ?? "").replace(/[$,\s]/g, ""); if (!/^\d*(\.\d{0,2})?$/.test(s) || s === "" || s === ".") return null; return Math.round(Number(s) * 100); };
+const centsToInput = (c) => (c / 100).toFixed(2);
+const when = (t) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const ICONS = {
+  heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6 4.1c2.1-.2 3.9.9 6 3 2.1-2.1 3.9-3.2 6-3 3.7.4 5.6 4.3 4 7.6C19.5 16.4 12 21 12 21z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+};
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+const app = $("#app");
+let nav = [];           // stack of {screen, params}
+let sheet = null;       // {type, params}
+let draft = null;       // bill being posted
+function go(screen, params = {}) { nav.push({ screen, params }); render(); }
+function back() { nav.pop(); render(); }
+function reset(screen, params = {}) { nav = [{ screen, params }]; render(); }
+function home() {
+  const u = me();
+  if (!u) return reset("welcome");
+  if (u.role === "billable") return reset("myBills");
+  return reset(hasPlan(u) ? "feed" : "paywall");
+}
+function openSheet(type, params = {}) { sheet = { type, params }; renderSheet(); }
+function closeSheet() { sheet = null; renderSheet(); }
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; t.setAttribute("role", "status");
+  $("#device").appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+
+function topbar({ title, big = true, back: showBack = nav.length > 1, right = "" }) {
+  return `<div class="topbar">
+    ${showBack ? `<button class="icon-btn" data-act="back" aria-label="Back">${ICONS.back}</button>` : ""}
+    ${big ? `<h1>${esc(title)}</h1>` : `<div class="small-title">${esc(title)}</div>`}
+    ${right}
+  </div>`;
+}
+const accountBtn = () => `<button class="icon-btn" data-act="account" aria-label="Account">${ICONS.user}</button>`;
+
+// ---------------------------------------------------------------------------
+// Screens
+// ---------------------------------------------------------------------------
+const screens = {
+  welcome() {
+    return `<div class="screen">
+      <div class="hero">
+        <div class="mark">${ICONS.heart.replace("<svg", '<svg width="34" height="34"')}</div>
+        <h2>GetBlessed</h2>
+        <p>Post your bills, or bless someone by helping pay theirs.</p>
+      </div>
+      <div class="stack">
+        <button class="role-card billable" data-act="go" data-to="signupBillable">
+          <div class="ico">${ICONS.doc.replace("<svg", '<svg width="24" height="24"')}</div>
+          <div><strong>I need a blessing</strong><span>Sign up as Billable and post pictures of your bills.</span></div>
+          <div class="chev">${ICONS.chev}</div>
+        </button>
+        <button class="role-card blessings" data-act="go" data-to="signupBlessings">
+          <div class="ico">${ICONS.gift.replace("<svg", '<svg width="24" height="24"')}</div>
+          <div><strong>I want to bless others</strong><span>Sign up as Blessings to see and bless posted bills.</span></div>
+          <div class="chev">${ICONS.chev}</div>
+        </button>
+      </div>
+      <button class="btn secondary" data-act="go" data-to="login">I already have an account</button>
+      <div class="notice info">${ICONS.info}<div>Just looking? Log in as <b>maria@demo.app</b> (Billable) or <b>grace@demo.app</b> (Blessings). Password: <b>demo1234</b>.</div></div>
+    </div>`;
+  },
+
+  login() {
+    return topbar({ title: "Log in" }) + `<form class="screen" data-form="login" novalidate>
+      <div class="group">
+        <div class="field"><label for="li-email">Email</label><input id="li-email" name="email" type="email" autocomplete="username" autocapitalize="none" required></div>
+        <div class="field"><label for="li-pass">Password</label><input id="li-pass" name="password" type="password" autocomplete="current-password" required></div>
+      </div>
+      <div id="form-error"></div>
+      <button class="btn" type="submit">Log in</button>
+      <div class="group-label">Demo accounts</div>
+      <div class="hstack">
+        <button class="btn small secondary" type="button" data-act="quick-login" data-email="maria@demo.app">Maria · Billable</button>
+        <button class="btn small secondary" type="button" data-act="quick-login" data-email="grace@demo.app">Grace · Blessings</button>
+      </div>
+    </form>`;
+  },
+
+  signupBillable() {
+    return topbar({ title: "Billable sign up" }) + `<form class="screen" data-form="signup-billable" novalidate>
+      <div class="notice info">${ICONS.doc}<div>You'll be able to post pictures of your bills so Blessings members can help.</div></div>
+      ${accountFields("sb")}
+      <div id="form-error"></div>
+      <button class="btn" type="submit">Create Billable account</button>
+    </form>`;
+  },
+
+  signupBlessings() {
+    const plan = nav.at(-1).params.plan || "yearly";
+    return topbar({ title: "Blessings sign up" }) + `<form class="screen" data-form="signup-blessings" novalidate>
+      <div class="notice info">${ICONS.gift}<div>You'll see every bill Billable members post and choose who to bless.</div></div>
+      ${accountFields("sg")}
+      <div class="group-label">Income</div>
+      <div class="group"><div class="field"><label for="sg-income">How much do you make per year?</label>
+        <div class="money-input"><span>$</span><input id="sg-income" name="income" inputmode="decimal" placeholder="85,000" required></div></div></div>
+      <p class="group-note">Private. Never shown to other members.</p>
+      <div class="group-label">Membership plan</div>
+      ${planPicker(plan)}
+      ${planFooter()}
+      <div id="form-error"></div>
+      <button class="btn" type="submit">Create account &amp; subscribe</button>
+    </form>`;
+  },
+
+  paywall() {
+    const plan = nav.at(-1).params.plan || "yearly";
+    return topbar({ title: "Choose a plan", right: accountBtn() }) + `<div class="screen">
+      <div class="notice info">${ICONS.gift}<div>A Blessings plan lets you see every bill Billable members post and bless them.</div></div>
+      ${planPicker(plan)}
+      ${planFooter()}
+      <button class="btn" data-act="subscribe">Subscribe</button>
+    </div>`;
+  },
+
+  myBills() {
+    const u = me();
+    const bills = db.bills.filter((b) => b.userId === u.id).sort((a, b) => b.createdAt - a.createdAt);
+    return topbar({ title: "My bills", right: `<button class="icon-btn" data-act="go" data-to="post" aria-label="Post a bill">${ICONS.plus}</button>${accountBtn()}` }) +
+      `<div class="screen">
+        <button class="btn" data-act="go" data-to="post">${ICONS.camera.replace("<svg", '<svg width="20" height="20"')} Post a bill</button>
+        ${bills.length ? `<div class="stack">${bills.map((b) => billCard(b, false)).join("")}</div>` :
+          `<div class="empty"><h3>No bills yet</h3><div>Take or choose a picture of a bill. We'll read the items and total for you.</div></div>`}
+      </div>`;
+  },
+
+  feed() {
+    const filter = nav.at(-1).params.filter || "all";
+    let bills = db.bills.slice().sort((a, b) => b.createdAt - a.createdAt);
+    if (filter !== "all") bills = bills.filter((b) => status(b) === filter);
+    const chip = (id, label) => `<button class="chip" data-act="filter" data-filter="${id}" aria-pressed="${filter === id}">${label}</button>`;
+    return topbar({ title: "Bills to bless", right: `<button class="icon-btn" data-act="go" data-to="myBlessings" aria-label="My blessings">${ICONS.gift}</button>${accountBtn()}` }) +
+      `<div class="screen">
+        <div class="chips">${chip("all", "All bills")}${chip("open", "Open")}${chip("blessed", "Blessed")}</div>
+        ${bills.length ? `<div class="stack">${bills.map((b) => billCard(b, true)).join("")}</div>` : `<div class="empty"><h3>Nothing here</h3><div>No bills match this filter.</div></div>`}
+      </div>`;
+  },
+
+  bill() {
+    const b = db.bills.find((x) => x.id === nav.at(-1).params.id);
+    if (!b) return topbar({ title: "Bill" }) + `<div class="screen"><div class="empty"><h3>Bill not found</h3></div></div>`;
+    const u = me(); const poster = userById(b.userId);
+    const blessingsFor = db.blessings.filter((x) => x.billId === b.id);
+    const canBless = u.role === "blessings" && status(b) === "open";
+    return topbar({ title: b.title, big: false }) + `<div class="screen">
+      <img class="photo" src="${billImage(b)}" alt="Photo of the bill">
+      <div class="group">
+        <div class="row"><div class="grow muted">Posted by</div><div class="value">${esc(poster?.displayName)}</div></div>
+        ${b.merchant ? `<div class="row"><div class="grow muted">From</div><div class="value">${esc(b.merchant)}</div></div>` : ""}
+        <div class="row"><div class="grow muted">Posted</div><div class="value">${when(b.createdAt)}</div></div>
+        <div class="row"><div class="grow muted">Status</div><span class="badge ${status(b)}">${status(b) === "open" ? "Open" : "Blessed"}</span></div>
+        ${b.description ? `<div class="row"><div class="grow">${esc(b.description)}</div></div>` : ""}
+      </div>
+      <div class="group-label">${b.items.length} item${b.items.length === 1 ? "" : "s"}</div>
+      <div class="group">
+        ${b.items.length ? b.items.map((i) => `<div class="row"><div class="grow">${esc(i.name)}${i.qty !== 1 ? `<div class="muted" style="font-size:13px">${i.qty} × ${money(i.unitCents ?? Math.round(i.lineCents / i.qty))}</div>` : ""}</div><div class="value">${money(i.lineCents)}</div></div>`).join("")
+          : `<div class="row muted">No individual items were listed on this bill.</div>`}
+      </div>
+      <div class="group">
+        <div class="row"><div class="grow muted">Items subtotal</div><div class="value">${money(b.subtotal)}</div></div>
+        <div class="row"><div class="grow muted">Tax</div><div class="value">${money(b.tax)}</div></div>
+        <div class="row total"><div class="grow">Complete total</div><div class="value">${money(b.total)}</div></div>
+        <div class="row"><div class="grow muted">Blessed so far</div><div class="value">${money(b.blessedCents)}</div></div>
+        <div class="row"><div class="grow muted">Still needed</div><div class="value">${money(remaining(b))}</div></div>
+      </div>
+      ${blessingsFor.length ? `<div class="group-label">Blessings received</div><div class="group">${blessingsFor.map((x) => `<div class="row"><div class="grow">${esc(userById(x.userId)?.displayName)} <span class="muted">· ${when(x.createdAt)}</span></div><div class="value">${money(x.amountCents)}</div></div>`).join("")}</div>` : ""}
+      ${canBless ? `<button class="btn gold" data-act="bless" data-id="${b.id}">${ICONS.gift.replace("<svg", '<svg width="20" height="20"')} Bless this bill</button>` : ""}
+    </div>`;
+  },
+
+  myBlessings() {
+    const list = db.blessings.filter((x) => x.userId === db.currentUserId).sort((a, b) => b.createdAt - a.createdAt);
+    const given = list.reduce((s, x) => s + x.amountCents, 0);
+    return topbar({ title: "My blessings" }) + `<div class="screen">
+      <div class="group"><div class="row total"><div class="grow">Total blessed</div><div class="value">${money(given)}</div></div></div>
+      ${list.length ? `<div class="group">${list.map((x) => {
+        const b = db.bills.find((y) => y.id === x.billId);
+        return `<div class="row"><div class="grow"><b>${esc(b?.title)}</b><div class="muted" style="font-size:13px">Tip Service Fee ${money(x.feeCents)} · charged ${money(x.amountCents + x.feeCents)} · ${when(x.createdAt)}</div></div><div class="value">${money(x.amountCents)}</div></div>`;
+      }).join("")}</div>` : `<div class="empty"><h3>No blessings yet</h3><div>Bills you bless will show up here.</div></div>`}
+    </div>`;
+  },
+
+  post() {
+    if (!draft) draft = { stage: "pick" };
+    const d = draft;
+    const head = topbar({ title: "Post a bill", big: false });
+    if (d.stage === "pick") {
+      return head + `<div class="screen">
+        <div class="group-label">Bill picture</div>
+        <label class="btn" for="photo-input">${ICONS.camera.replace("<svg", '<svg width="20" height="20"')} Take or choose a picture</label>
+        <input id="photo-input" type="file" accept="image/*" hidden>
+        <p class="group-note" style="margin-top:0">Lay the bill flat in good light and fit the whole bill in the picture.</p>
+        <div class="group-label">No bill handy? Try a sample</div>
+        <div class="hstack">${Object.keys(SAMPLES).map((k) => `<button class="btn small secondary" data-act="sample" data-key="${k}">${esc(SAMPLES[k].title)}</button>`).join("")}</div>
+        <div class="notice info">${ICONS.info}<div>The picture is read right here on your phone. You'll check every item before anything is posted.</div></div>
+      </div>`;
+    }
+    if (d.stage === "scanning") {
+      return head + `<div class="screen">
+        <img class="photo" src="${d.image}" alt="Your bill">
+        <div class="group scan-status"><b id="scan-label">${esc(d.statusLabel || "Starting…")}</b><div class="bar"><i id="scan-bar" style="width:${Math.round((d.progress || 0) * 100)}%"></i></div>
+        <div class="muted" style="font-size:13px">The first scan downloads the text reader (about 7 MB). After that it's quick.</div></div>
+      </div>`;
+    }
+    // review
+    const subtotal = d.items.reduce((s, i) => s + (toCents(i.price) ?? 0), 0);
+    const tax = toCents(d.tax) ?? 0, total = toCents(d.total) ?? 0;
+    const off = Math.abs(subtotal + tax - total) > 1;
+    return head + `<form class="screen" data-form="post" novalidate>
+      <img class="photo" src="${d.image}" alt="Your bill">
+      ${d.error ? `<div class="notice warn">${ICONS.warn}<div>${esc(d.error)}</div></div>` : `<div class="notice info">${ICONS.info}<div>We found ${d.items.length} item${d.items.length === 1 ? "" : "s"}${d.totalWasPrinted ? " and the total" : ""}. Check them and fix anything we misread.</div></div>`}
+      <div class="group-label">Details</div>
+      <div class="group">
+        <div class="field"><label for="p-title">Title</label><input id="p-title" name="title" value="${esc(d.title)}" required></div>
+        <div class="field"><label for="p-merchant">Store or company</label><input id="p-merchant" name="merchant" value="${esc(d.merchant)}"></div>
+        <div class="field"><label for="p-note">Anything Blessings members should know? (optional)</label><textarea id="p-note" name="note" rows="2">${esc(d.note)}</textarea></div>
+      </div>
+      <div class="group-label">${d.items.length} item${d.items.length === 1 ? "" : "s"}</div>
+      <div class="group">
+        <div class="item-head"><span>Item</span><span>Qty</span><span>Price</span><span></span></div>
+        ${d.items.map((i, n) => `<div class="item-row">
+          <input aria-label="Item name" data-item="${n}" data-key="name" value="${esc(i.name)}">
+          <input class="num" aria-label="Quantity" inputmode="decimal" data-item="${n}" data-key="qty" value="${esc(i.qty)}">
+          <input class="num" aria-label="Price" inputmode="decimal" data-item="${n}" data-key="price" value="${esc(i.price)}">
+          <button class="del" type="button" data-act="del-item" data-i="${n}" aria-label="Remove ${esc(i.name)}">×</button>
+        </div>`).join("")}
+        <div class="row"><button class="linkish" type="button" data-act="add-item">+ Add item</button></div>
+      </div>
+      <div class="group" id="totals">${totalsBlock(subtotal)}</div>
+      <div id="mismatch">${off ? mismatchNote(subtotal + tax, total) : ""}</div>
+      <details class="raw group"><summary>Text read from the picture</summary><pre>${esc(d.raw)}</pre></details>
+      <div id="form-error"></div>
+      <button class="btn" type="submit">Post bill</button>
+      <button class="btn secondary" type="button" data-act="rescan">Use a different picture</button>
+    </form>`;
+  },
+};
+
+function accountFields(p) {
+  return `<div class="group-label">Your account</div><div class="group">
+    <div class="field"><label for="${p}-name">Name</label><input id="${p}-name" name="name" autocomplete="name" required></div>
+    <div class="field"><label for="${p}-email">Email</label><input id="${p}-email" name="email" type="email" autocomplete="email" autocapitalize="none" required></div>
+    <div class="field"><label for="${p}-pass">Password (8+ characters)</label><input id="${p}-pass" name="password" type="password" autocomplete="new-password" required></div>
+    <div class="field"><label for="${p}-pass2">Confirm password</label><input id="${p}-pass2" name="password2" type="password" autocomplete="new-password" required></div>
+  </div>`;
+}
+function planPicker(selected) {
+  return `<div class="group" role="radiogroup" aria-label="Membership plan">${PLANS.map((p) => `
+    <button type="button" class="plan" role="radio" aria-checked="${p.id === selected}" data-act="plan" data-plan="${p.id}">
+      <span class="radio"></span>
+      <span class="grow"><strong>${p.name}${p.save ? `<span class="save">${p.save}</span>` : ""}</strong><small>${p.note}</small></span>
+      <span class="price">${money(p.priceCents)}</span>
+    </button>`).join("")}</div>`;
+}
+function planFooter() {
+  return `<p class="group-note">Paid through your Apple ID. Monthly and 1-Year renew automatically until cancelled. Each time you bless a bill, a Tip Service Fee of $1.99 for every $800 blessed is added.</p>`;
+}
+function billCard(b, showPoster) {
+  const pct = b.total ? Math.min(100, Math.round(b.blessedCents / b.total * 100)) : 0;
+  const poster = userById(b.userId);
+  return `<button class="bill-card" data-act="open-bill" data-id="${b.id}">
+    <img class="thumb" src="${billImage(b)}" alt="">
+    <div class="meta">
+      <strong>${esc(b.title)}</strong>
+      <span>${showPoster ? "Posted by " + esc(poster?.displayName) : esc(b.merchant || "")} · ${when(b.createdAt)}</span>
+      <div class="progress" aria-label="${pct}% blessed"><i style="width:${pct}%"></i></div>
+      <span>${money(b.blessedCents)} of ${money(b.total)} blessed${b.sample ? ' · <span class="badge sample">Example</span>' : ""}</span>
+    </div>
+    <div class="amt"><b>${money(b.total)}</b><span class="badge ${status(b)}">${status(b) === "open" ? "Open" : "Blessed"}</span></div>
+  </button>`;
+}
+function totalsBlock(subtotal) {
+  return `<div class="row"><div class="grow muted">Items subtotal</div><div class="value">${money(subtotal)}</div></div>
+    <div class="row"><label class="grow muted" for="p-tax">Tax</label><div class="money-input"><span>$</span><input id="p-tax" class="num" data-key="tax" inputmode="decimal" value="${esc(draft.tax)}" style="width:90px;text-align:right;border:1px solid var(--line);border-radius:9px;padding:6px 8px;background:var(--bg)"></div></div>
+    <div class="row total"><label class="grow" for="p-total">Complete total</label><div class="money-input"><span>$</span><input id="p-total" class="num" data-key="total" inputmode="decimal" value="${esc(draft.total)}" style="width:110px;text-align:right;font-weight:800;border:1px solid var(--line);border-radius:9px;padding:6px 8px;background:var(--bg)"></div></div>`;
+}
+function mismatchNote(itemsPlusTax, total) {
+  return `<div class="notice warn">${ICONS.warn}<div>Items plus tax come to <b>${money(itemsPlusTax)}</b>, but the total is <b>${money(total)}</b>. Fees or discounts can cause this. Please double check.</div></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Sheets: account menu, demo menu, App Store purchase, bless + payment
+// ---------------------------------------------------------------------------
+const sheets = {
+  account() {
+    const u = me();
+    return `<h3>${esc(u.displayName)}</h3>
+      <div class="group">
+        <div class="row"><div class="grow muted">Account</div><div class="value">${u.role === "billable" ? "Billable member" : "Blessings member"}</div></div>
+        <div class="row"><div class="grow muted">Email</div><div class="value">${esc(u.email)}</div></div>
+        ${u.role === "blessings" ? `<div class="row"><div class="grow muted">Plan</div><div class="value">${hasPlan(u) ? PLANS.find((p) => p.id === u.plan).name + " · until " + new Date(u.planExpires).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "None"}</div></div>
+        <div class="row"><div class="grow muted">Yearly income (private)</div><div class="value">${money(u.annualIncomeCents || 0)}</div></div>` : ""}
+      </div>
+      <button class="btn secondary" data-act="logout">Log out</button>`;
+  },
+  demo() {
+    return `<h3>Demo menu</h3>
+      <p class="muted" style="margin:0">Jump between the two kinds of member to see both sides.</p>
+      <button class="btn secondary" data-act="quick-login" data-email="maria@demo.app">Switch to Maria (Billable)</button>
+      <button class="btn secondary" data-act="quick-login" data-email="grace@demo.app">Switch to Grace (Blessings)</button>
+      <button class="btn secondary" data-act="logout">Log out</button>
+      <button class="btn secondary" data-act="reset-demo" style="color:var(--danger)">Reset demo data</button>
+      <div class="notice info">${ICONS.info}<div>To install: in Safari tap Share, then <b>Add to Home Screen</b>.</div></div>`;
+  },
+  purchase({ plan }) {
+    const p = PLANS.find((x) => x.id === plan);
+    return `<h3>App Store</h3>
+      <div class="appstore">
+        <div class="sku"><div class="mark">${ICONS.heart.replace("<svg", '<svg width="26" height="26"')}</div>
+          <div class="grow"><b>GetBlessed Blessings ${p.name}</b><div class="muted" style="font-size:14px">${p.note}</div></div></div>
+        <div class="row" style="padding:0"><div class="grow muted">Price</div><div class="value">${money(p.priceCents)}${p.id === "two_year" ? "" : " / " + p.period}</div></div>
+        <div class="notice warn">${ICONS.info}<div>Demo purchase. You won't be charged. In the real app this is Apple's own payment sheet.</div></div>
+      </div>
+      <button class="btn" data-act="confirm-purchase" data-plan="${p.id}">Subscribe</button>
+      <button class="btn secondary" data-act="close-sheet">Cancel</button>`;
+  },
+  bless({ id, amount = "" }) {
+    const b = db.bills.find((x) => x.id === id);
+    const cents = toCents(amount) ?? 0, fee = tipFee(cents), left = remaining(b);
+    const tooMuch = cents > left;
+    return `<h3>Bless ${esc(userById(b.userId)?.displayName)}'s bill</h3>
+      <div class="group">
+        <div class="row"><div class="grow">${esc(b.title)}</div><div class="value">${money(b.total)}</div></div>
+        <div class="row"><div class="grow muted">Still needed</div><div class="value">${money(left)}</div></div>
+      </div>
+      <div class="group"><div class="field"><label for="bless-amount">How much would you like to bless?</label>
+        <div class="money-input" style="font-size:28px;font-weight:800"><span>$</span><input id="bless-amount" class="num" inputmode="decimal" value="${esc(amount)}" placeholder="0.00" style="font-size:28px;font-weight:800;border:0;outline:none;background:transparent;width:100%"></div></div></div>
+      <div class="hstack">
+        ${[25, 50, 100].filter((v) => v * 100 < left).map((v) => `<button class="chip" data-act="bless-amount" data-v="${v}.00">$${v}</button>`).join("")}
+        <button class="chip" data-act="bless-amount" data-v="${centsToInput(left)}">Full ${money(left)}</button>
+      </div>
+      <div class="group" id="bless-breakdown">${blessBreakdown(cents, fee)}</div>
+      <p class="group-note" style="margin-top:-4px">The Tip Service Fee is $1.99 for every $800 blessed ($0.01 to $800 is $1.99, $800.01 to $1,600 is $3.98, and so on).</p>
+      <div id="bless-error">${tooMuch ? `<div class="notice error">${ICONS.warn}<div>You can bless up to ${money(left)} on this bill.</div></div>` : ""}</div>
+      <button class="btn gold" data-act="bless-pay" data-id="${b.id}" ${cents <= 0 || tooMuch ? "disabled" : ""}>Continue to payment</button>`;
+  },
+  pay({ id, cents }) {
+    const fee = tipFee(cents);
+    return `<h3>Payment</h3>
+      <div class="group">${blessBreakdown(cents, fee)}</div>
+      <div class="group">
+        <div class="field"><label for="card-num">Card number</label><input id="card-num" class="mono" value="4242 4242 4242 4242" inputmode="numeric"></div>
+        <div class="field" style="flex-direction:row;gap:16px"><div style="flex:1"><label for="card-exp">Expires</label><input id="card-exp" class="mono" value="12 / 29"></div><div style="flex:1"><label for="card-cvc">CVC</label><input id="card-cvc" class="mono" value="123"></div></div>
+      </div>
+      <div class="notice warn">${ICONS.info}<div>Demo card. No money moves. The real app takes the card with Stripe.</div></div>
+      <button class="btn gold" data-act="confirm-pay" data-id="${id}" data-cents="${cents}">Pay ${money(cents + fee)}</button>
+      <button class="btn secondary" data-act="close-sheet">Cancel</button>`;
+  },
+  thanks({ id, cents }) {
+    const b = db.bills.find((x) => x.id === id);
+    return `<div class="center stack" style="padding:12px 0">
+      <div style="margin:0 auto;color:var(--gold)">${ICONS.gift.replace("<svg", '<svg width="56" height="56"')}</div>
+      <h3>Thank you for the blessing!</h3>
+      <p class="muted" style="margin:0">${esc(userById(b.userId)?.displayName)} has been blessed with ${money(cents)}.${remaining(b) === 0 ? " Their bill is now fully covered." : ` ${money(remaining(b))} is still needed.`}</p>
+      </div>
+      <button class="btn" data-act="close-sheet">Done</button>`;
+  },
+};
+function blessBreakdown(cents, fee) {
+  return `<div class="row"><div class="grow muted">Blessing</div><div class="value">${money(cents)}</div></div>
+    <div class="row"><div class="grow muted">Tip Service Fee${cents > 0 ? ` <span class="muted" style="font-size:13px">(${fee / TIP_FEE_CENTS} × $1.99)</span>` : ""}</div><div class="value">${money(fee)}</div></div>
+    <div class="row total"><div class="grow">You pay</div><div class="value">${money(cents + fee)}</div></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function render() {
+  if (!nav.length) return home();
+  const { screen } = nav.at(-1);
+  if (screen !== "post") draft = null;
+  app.innerHTML = screens[screen]();
+  const scroller = app.querySelector(".screen");
+  if (scroller) scroller.scrollTop = 0;
+}
+function renderSheet() {
+  document.querySelector(".sheet-backdrop")?.remove();
+  if (!sheet) return;
+  const wrap = document.createElement("div");
+  wrap.className = "sheet-backdrop";
+  wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div>${sheets[sheet.type](sheet.params)}</div>`;
+  wrap.addEventListener("click", (e) => { if (e.target === wrap) closeSheet(); });
+  $("#device").appendChild(wrap);
+}
+
+// ---------------------------------------------------------------------------
+// Posting a bill: read the picture, then review
+// ---------------------------------------------------------------------------
+async function startScan(imageSrc, sampleKey = null) {
+  draft = { stage: "scanning", image: imageSrc, sampleKey, statusLabel: "Starting…", progress: 0 };
+  render();
+  try {
+    const result = await readBill(imageSrc, (label, progress) => {
+      if (!draft || draft.stage !== "scanning") return;
+      draft.statusLabel = label; draft.progress = progress;
+      const l = $("#scan-label"), bar = $("#scan-bar");
+      if (l) l.textContent = label;
+      if (bar) bar.style.width = Math.round(progress * 100) + "%";
+    });
+    if (!draft || draft.image !== imageSrc) return;
+    const p = result.parsed;
+    Object.assign(draft, {
+      stage: "review", raw: result.raw, totalWasPrinted: p.totalWasPrinted,
+      title: sampleKey ? SAMPLES[sampleKey].title : (p.merchant ? titleCase(p.merchant) + " bill" : "My bill"),
+      merchant: p.merchant ? titleCase(p.merchant) : "", note: "",
+      items: p.items.map((i) => ({ name: i.name, qty: String(i.qty), price: centsToInput(i.lineCents) })),
+      tax: centsToInput(p.tax), total: centsToInput(p.total),
+      error: result.rows.length === 0 ? "No text was found. Try a clearer, well-lit picture of the whole bill." :
+        p.items.length === 0 ? "We couldn't find individual items on this bill. Add them below or just enter the total." : null,
+    });
+  } catch (err) {
+    console.error(err);
+    Object.assign(draft, { stage: "review", raw: "", items: [], tax: "0.00", total: "0.00", title: "My bill", merchant: "", note: "",
+      error: "The text reader couldn't start on this device. You can still enter the items and total by hand." });
+  }
+  render();
+}
+function titleCase(s) { return s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase()); }
+async function downscale(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const max = 1600, scale = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.8);
+  } finally { URL.revokeObjectURL(url); }
+}
+function refreshTotals() {
+  if (!draft || draft.stage !== "review") return;
+  const subtotal = draft.items.reduce((s, i) => s + (toCents(i.price) ?? 0), 0);
+  const tax = toCents(draft.tax) ?? 0, total = toCents(draft.total) ?? 0;
+  const sub = $("#totals .value"); if (sub) sub.textContent = money(subtotal);
+  $("#mismatch").innerHTML = Math.abs(subtotal + tax - total) > 1 ? mismatchNote(subtotal + tax, total) : "";
+}
+function postBill(form) {
+  const d = draft; const err = (m) => { $("#form-error").innerHTML = `<div class="notice error">${ICONS.warn}<div>${esc(m)}</div></div>`; };
+  d.title = form.title.value.trim(); d.merchant = form.merchant.value.trim(); d.note = form.note.value.trim();
+  if (!d.title) return err("Please give your bill a title.");
+  const items = [];
+  for (const i of d.items) {
+    if (!i.name.trim() && !i.price) continue;
+    const qty = Number(i.qty), cents = toCents(i.price);
+    if (!i.name.trim()) return err("Every item needs a name.");
+    if (!(qty > 0) || cents === null) return err(`Check the quantity and price for ${i.name}.`);
+    items.push({ name: i.name.trim(), qty, lineCents: cents, unitCents: Math.round(cents / qty) });
+  }
+  const tax = toCents(d.tax), total = toCents(d.total);
+  if (tax === null || total === null) return err("Tax and total need to be amounts like 12.34.");
+  if (total <= 0) return err("Please enter the bill's total.");
+  const bill = { id: "b-" + uid(), userId: db.currentUserId, title: d.title, merchant: d.merchant, description: d.note,
+    image: d.sampleKey ? "sample:" + d.sampleKey : d.image, items, tax, total, subtotal: items.reduce((s, i) => s + i.lineCents, 0),
+    blessedCents: 0, createdAt: Date.now() };
+  db.bills.push(bill); save();
+  draft = null; reset("myBills"); toast("Bill posted. Blessings members can see it now.");
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+function formError(msg) { const el = $("#form-error"); if (el) el.innerHTML = `<div class="notice error">${ICONS.warn}<div>${esc(msg)}</div></div>`; }
+function validateAccount(f) {
+  if (!f.name.value.trim()) return "Please enter your name.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())) return "Please enter a valid email address.";
+  if (f.password.value.length < 8) return "Your password needs at least 8 characters.";
+  if (f.password.value !== f.password2.value) return "Passwords don't match.";
+  if (db.users.some((u) => u.email === f.email.value.trim().toLowerCase())) return "An account with that email already exists. Log in instead.";
+  return null;
+}
+function signIn(user) { db.currentUserId = user.id; save(); closeSheet(); home(); }
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const actions = {
+    back, go: () => go(el.dataset.to),
+    account: () => openSheet("account"),
+    "close-sheet": closeSheet,
+    "quick-login": () => signIn(db.users.find((u) => u.email === el.dataset.email)),
+    logout: () => { db.currentUserId = null; save(); closeSheet(); reset("welcome"); },
+    "reset-demo": () => { db = seed(); save(); closeSheet(); reset("welcome"); toast("Demo data reset."); },
+    "open-bill": () => go("bill", { id: el.dataset.id }),
+    filter: () => { nav.at(-1).params.filter = el.dataset.filter; render(); },
+    plan: () => {
+      nav.at(-1).params.plan = el.dataset.plan;
+      el.parentElement.querySelectorAll(".plan").forEach((p) => p.setAttribute("aria-checked", p === el));
+    },
+    subscribe: () => openSheet("purchase", { plan: nav.at(-1).params.plan || "yearly" }),
+    "confirm-purchase": () => {
+      const u = me(); const plan = el.dataset.plan;
+      u.plan = plan;
+      const months = { monthly: 1, yearly: 12, two_year: 24 }[plan];
+      const end = new Date(); end.setMonth(end.getMonth() + months); u.planExpires = end.getTime();
+      save(); closeSheet(); reset("feed"); toast(`Welcome! Your ${PLANS.find((p) => p.id === plan).name} plan is active.`);
+    },
+    bless: () => openSheet("bless", { id: el.dataset.id }),
+    "bless-amount": () => { sheet.params.amount = el.dataset.v; renderSheet(); },
+    "bless-pay": () => { const cents = toCents(sheet.params.amount); openSheet("pay", { id: el.dataset.id, cents }); },
+    "confirm-pay": () => {
+      const b = db.bills.find((x) => x.id === el.dataset.id); const cents = Number(el.dataset.cents);
+      if (cents > remaining(b)) return;
+      b.blessedCents += cents;
+      db.blessings.push({ id: uid(), billId: b.id, userId: db.currentUserId, amountCents: cents, feeCents: tipFee(cents), createdAt: Date.now() });
+      save(); render(); openSheet("thanks", { id: b.id, cents });
+    },
+    sample: () => startScan(sampleImage(el.dataset.key), el.dataset.key),
+    rescan: () => { draft = { stage: "pick" }; render(); },
+    "add-item": () => { draft.items.push({ name: "", qty: "1", price: "" }); render(); },
+    "del-item": () => { draft.items.splice(Number(el.dataset.i), 1); render(); },
+  };
+  if (actions[act]) { e.preventDefault(); actions[act](); }
+});
+$("#demo-menu-btn").addEventListener("click", () => openSheet("demo"));
+
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (draft?.stage === "review" && t.dataset.item !== undefined) { draft.items[Number(t.dataset.item)][t.dataset.key] = t.value; refreshTotals(); }
+  else if (draft?.stage === "review" && (t.dataset.key === "tax" || t.dataset.key === "total")) { draft[t.dataset.key] = t.value; refreshTotals(); }
+  else if (t.id === "bless-amount" && sheet?.type === "bless") {
+    sheet.params.amount = t.value;
+    const b = db.bills.find((x) => x.id === sheet.params.id);
+    const cents = toCents(t.value) ?? 0, left = remaining(b), tooMuch = cents > left;
+    $("#bless-breakdown").innerHTML = blessBreakdown(cents, tipFee(cents));
+    $("#bless-error").innerHTML = tooMuch ? `<div class="notice error">${ICONS.warn}<div>You can bless up to ${money(left)} on this bill.</div></div>` : "";
+    document.querySelector('[data-act="bless-pay"]').disabled = cents <= 0 || tooMuch;
+  }
+});
+document.addEventListener("change", async (e) => {
+  if (e.target.id !== "photo-input" || !e.target.files?.[0]) return;
+  try { startScan(await downscale(e.target.files[0])); }
+  catch { toast("That picture couldn't be opened. Try another one."); }
+});
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.dataset.form === "login") {
+    const u = db.users.find((x) => x.email === f.email.value.trim().toLowerCase() && x.password === f.password.value);
+    return u ? signIn(u) : formError("Incorrect email or password.");
+  }
+  if (f.dataset.form === "signup-billable") {
+    const problem = validateAccount(f); if (problem) return formError(problem);
+    const u = { id: "u-" + uid(), email: f.email.value.trim().toLowerCase(), password: f.password.value, displayName: f.name.value.trim(), role: "billable" };
+    db.users.push(u); return signIn(u);
+  }
+  if (f.dataset.form === "signup-blessings") {
+    const problem = validateAccount(f); if (problem) return formError(problem);
+    const income = toCents(f.income.value);
+    if (income === null) return formError("Please enter your yearly income, for example 85000.");
+    const plan = nav.at(-1).params.plan || "yearly";
+    const u = { id: "u-" + uid(), email: f.email.value.trim().toLowerCase(), password: f.password.value, displayName: f.name.value.trim(), role: "blessings", annualIncomeCents: income };
+    db.users.push(u); db.currentUserId = u.id; save();
+    reset("paywall", { plan });
+    return openSheet("purchase", { plan });
+  }
+  if (f.dataset.form === "post") return postBill(f);
+});
+
+render();
+</script>
