@@ -5,7 +5,7 @@ const { wrap, sign, authenticate } = require('../auth');
 const { getSettings, isTrue } = require('../settings');
 
 const router = express.Router();
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@.]{1,255}(\.[^\s@.]{1,63})+$/;
 
 function signup(role) {
   return wrap(async (req, res) => {
@@ -14,7 +14,7 @@ function signup(role) {
     const email = String(req.body.email || '').trim().toLowerCase();
     const name = String(req.body.name || '').trim().slice(0, 120);
     const password = String(req.body.password || '');
-    if (!EMAIL_RE.test(email) || email.length > 255) return res.status(400).json({ error: 'Valid email required' });
+    if (email.length > 255 || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Valid email required' });
     if (!name) return res.status(400).json({ error: 'Name required' });
     if (password.length < 8 || password.length > 72) return res.status(400).json({ error: 'Password must be 8-72 characters' });
     let income = null;

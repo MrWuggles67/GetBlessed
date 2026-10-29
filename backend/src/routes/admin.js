@@ -28,7 +28,7 @@ router.get('/users', wrap(async (req, res) => {
   const { limit, offset } = paging(req.query);
   const where = []; const args = [];
   if (ROLES.includes(req.query.role)) { where.push('role = ?'); args.push(req.query.role); }
-  if (req.query.q) { where.push('(email LIKE ? OR name LIKE ?)'); const q = `%${String(req.query.q).replace(/[%_]/g, '\\$&')}%`; args.push(q, q); }
+  if (req.query.q) { where.push('(email LIKE ? OR name LIKE ?)'); const q = `%${String(req.query.q).replace(/[\\%_]/g, '\\$&')}%`; args.push(q, q); }
   const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const [rows] = await pool.query(
     `SELECT id, email, name, role, annual_income, status, created_at FROM users ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`, [...args, limit, offset]);

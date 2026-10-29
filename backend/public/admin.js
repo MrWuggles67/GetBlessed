@@ -140,6 +140,6 @@ async function show(page) {
 }
 
 window.addEventListener('hashchange', () => { state.offset = 0; state.q = ''; state.role = ''; state.status = ''; route(); });
-function route() { const p = location.hash.slice(1); show(pages[p] ? p : 'dashboard').catch(() => {}); }
+function route() { const p = location.hash.slice(1); show(Object.hasOwn(pages, p) ? p : 'dashboard').catch(() => {}); }
 function start() { $('#login').hidden = true; $('#app').hidden = false; route(); }
 if (token) start();
