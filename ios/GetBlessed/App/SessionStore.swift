@@ -53,6 +53,12 @@ final class SessionStore {
         apply(try await api.logIn(email: email, password: password))
     }
 
+    /// Reloads the member (e.g. after a plan was purchased).
+    func refreshUser() async {
+        guard currentUser != nil, let user = try? await api.me() else { return }
+        state = .signedIn(user)
+    }
+
     func signOut() {
         Keychain.delete(Self.tokenKey)
         api.token = nil

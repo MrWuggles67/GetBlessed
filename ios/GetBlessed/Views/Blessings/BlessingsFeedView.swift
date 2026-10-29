@@ -18,6 +18,13 @@ struct BlessingsFeedView: View {
             .navigationTitle("Bills to bless")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { AccountMenu() }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        MyBlessingsView()
+                    } label: {
+                        Label("My blessings", systemImage: "gift")
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Picker("Show", selection: $filter) {

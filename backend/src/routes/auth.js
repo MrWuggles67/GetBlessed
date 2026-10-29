@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -6,6 +7,7 @@ import { withTransaction } from '../db.js';
 import { conflict, unauthorized } from '../errors.js';
 import { centsToString } from '../money.js';
 import { serializeUser } from '../serializers.js';
+import { activeSubscription } from '../subscriptions.js';
 import { ulid } from '../ulid.js';
 import { validateBillableSignup, validateBlessingsSignup, validateLogin } from '../validation.js';
 
@@ -27,10 +29,12 @@ export function authRouter({ pool, config }) {
         );
         let profile;
         if (role === ROLES.BLESSINGS) {
-          profile = { annual_income: centsToString(input.annualIncomeCents) };
-          await conn.execute('INSERT INTO blessing_profiles (user_id, annual_income) VALUES (?, ?)', [
+          // A new Blessings member has no plan yet; the app asks them to choose one next.
+          profile = { annual_income: centsToString(input.annualIncomeCents), app_account_token: randomUUID(), subscription: undefined };
+          await conn.execute('INSERT INTO blessing_profiles (user_id, annual_income, app_account_token) VALUES (?, ?, ?)', [
             result.insertId,
             profile.annual_income,
+            profile.app_account_token,
           ]);
         }
         const [rows] = await conn.execute(
@@ -80,6 +84,6 @@ export function authRouter({ pool, config }) {
 
 async function loadProfile(pool, user) {
   if (user.role !== ROLES.BLESSINGS) return undefined;
-  const [rows] = await pool.execute('SELECT annual_income FROM blessing_profiles WHERE user_id = ?', [user.id]);
-  return rows[0];
+  const [rows] = await pool.execute('SELECT annual_income, app_account_token FROM blessing_profiles WHERE user_id = ?', [user.id]);
+  return rows[0] && { ...rows[0], subscription: await activeSubscription(pool, user.id) };
 }

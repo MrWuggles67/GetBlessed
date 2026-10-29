@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { HttpError } from '../src/errors.js';
+import { tipServiceFeeCents } from '../src/pricing.js';
 import { validateBill, validateBlessingsSignup } from '../src/validation.js';
+
+test('tip service fee is $1.99 for every started $800', () => {
+  assert.equal(tipServiceFeeCents(1), 199);
+  assert.equal(tipServiceFeeCents(80_000), 199);
+  assert.equal(tipServiceFeeCents(80_001), 398);
+  assert.equal(tipServiceFeeCents(240_000), 597);
+  assert.equal(tipServiceFeeCents(0), 0);
+});
 
 test('blessings sign-up requires an annual income', () => {
   const base = { email: 'A@Example.com', password: 'longenough', displayName: 'Ann' };

@@ -31,6 +31,13 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-getblessed}
       DB_NAME: getblessed
       UPLOAD_DIR: /data/uploads
+      APPLE_BUNDLE_ID: com.getblessed.app
+      APPLE_APP_ID: ${APPLE_APP_ID:-}
+      APPLE_ENVIRONMENT: ${APPLE_ENVIRONMENT:-SANDBOX}
+      APPLE_ROOT_CERTS_DIR: ${APPLE_ROOT_CERTS_DIR:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     volumes:
       - uploads:/data/uploads
     ports:

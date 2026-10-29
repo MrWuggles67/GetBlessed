@@ -2,13 +2,24 @@ import SwiftUI
 
 @main
 struct GetBlessedApp: App {
-    @State private var session = SessionStore()
+    @State private var session: SessionStore
+    @State private var subscriptions: SubscriptionStore
+
+    init() {
+        let session = SessionStore()
+        _session = State(initialValue: session)
+        _subscriptions = State(initialValue: SubscriptionStore(session: session))
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(session)
-                .task { await session.restore() }
+                .environment(subscriptions)
+                .task {
+                    await session.restore()
+                    await subscriptions.start()
+                }
         }
     }
 }
@@ -25,7 +36,8 @@ struct RootView: View {
         case .signedIn(let user):
             switch user.role {
             case .billable: MyBillsView()
-            case .blessings: BlessingsFeedView()
+            case .blessings:
+                if user.needsPlan { PaywallView() } else { BlessingsFeedView() }
             }
         }
     }

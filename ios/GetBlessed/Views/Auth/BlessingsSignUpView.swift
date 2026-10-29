@@ -1,9 +1,11 @@
 import SwiftUI
 
 /// Sign-up page for Blessings members (can see every Billable member's bills).
-/// Includes the member's yearly income.
+/// Includes the member's yearly income and their membership plan.
 struct BlessingsSignUpView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(SubscriptionStore.self) private var subscriptions
+    @State private var plan: String?
     @State private var form = BlessingsSignUp()
     @State private var confirmPassword = ""
     @State private var annualIncome: Decimal?
@@ -33,6 +35,14 @@ struct BlessingsSignUpView: View {
                 Text("How much you make on a yearly basis. This stays private and is never shown to other members.")
             }
 
+            Section {
+                PlanPicker(selection: $plan)
+            } header: {
+                Text("Membership plan")
+            } footer: {
+                PlanFooter()
+            }
+
             if let errorMessage {
                 Section { Text(errorMessage).foregroundStyle(.red) }
             }
@@ -43,7 +53,7 @@ struct BlessingsSignUpView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        if isSubmitting { ProgressView() } else { Text("Create Blessings account").bold() }
+                        if isSubmitting { ProgressView() } else { Text("Create account & subscribe").bold() }
                         Spacer()
                     }
                 }
@@ -62,11 +72,19 @@ struct BlessingsSignUpView: View {
             errorMessage = "Please enter your yearly income."
             return
         }
+        guard let offer = subscriptions.offers.first(where: { $0.id == plan }) else {
+            errorMessage = "Please choose a membership plan."
+            return
+        }
         form.annualIncome = annualIncome.roundedTo().apiString
         isSubmitting = true
         defer { isSubmitting = false }
         do {
+            // The account is created first so the App Store purchase can be tied
+            // to it. If the purchase is cancelled, the member lands on the plan
+            // screen and can subscribe from there.
             try await session.signUpBlessings(form)
+            try await subscriptions.purchase(offer)
         } catch {
             errorMessage = error.localizedDescription
         }

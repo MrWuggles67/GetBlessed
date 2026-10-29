@@ -2,10 +2,12 @@ import { Router } from 'express';
 import multer from 'multer';
 import { ROLES, authenticate, requireRole } from '../auth.js';
 import { withTransaction } from '../db.js';
-import { badRequest, forbidden, notFound } from '../errors.js';
-import { centsToString, milliToString } from '../money.js';
-import { serializeBill } from '../serializers.js';
+import { HttpError, badRequest, conflict, forbidden, notFound } from '../errors.js';
+import { centsToString, milliToString, toCents } from '../money.js';
+import { tipServiceFeeCents } from '../pricing.js';
+import { serializeBill, serializeBlessing } from '../serializers.js';
 import { IMAGE_TYPES } from '../storage.js';
+import { activeSubscription, requireSubscription, subscriptionRequired } from '../subscriptions.js';
 import { ULID_PATTERN, ulid } from '../ulid.js';
 import { validateBill } from '../validation.js';
 
@@ -14,10 +16,10 @@ const PAGE_SIZE_MAX = 100;
 const FEED_STATUSES = new Set(['open', 'blessed', 'closed']);
 
 const BILL_COLUMNS = `b.id, b.public_id, b.user_id, b.title, b.merchant, b.description, b.image_key,
-  b.item_count, b.subtotal, b.tax, b.total, b.currency, b.status, b.created_at,
+  b.item_count, b.subtotal, b.tax, b.total, b.amount_blessed, b.currency, b.status, b.created_at,
   u.public_id AS poster_public_id, u.display_name AS poster_display_name`;
 
-export function billsRouter({ pool, config, storage }) {
+export function billsRouter({ pool, config, storage, payments }) {
   const router = Router();
   router.use(authenticate({ pool, config }));
 
@@ -87,8 +89,8 @@ export function billsRouter({ pool, config, storage }) {
     res.json(await page(pool, where, params, limit));
   });
 
-  // Blessings members can see any and all Billable postings.
-  router.get('/feed', requireRole(ROLES.BLESSINGS), async (req, res) => {
+  // Blessings members with an active plan can see any and all Billable postings.
+  router.get('/feed', requireRole(ROLES.BLESSINGS), requireSubscription({ pool }), async (req, res) => {
     const { limit, beforeId } = pageParams(req.query);
     const params = [];
     let where;
@@ -109,6 +111,55 @@ export function billsRouter({ pool, config, storage }) {
   router.get('/:id', async (req, res) => {
     const row = await findVisibleBill(pool, req.params.id, req.user);
     res.json({ bill: serializeBill(row, await findItems(pool, row.id)) });
+  });
+
+  // A Blessings member blesses a bill. The charge is the blessing amount plus
+  // the Tip Service Fee ($1.99 per started $800); the app then completes the
+  // card payment with Stripe and the webhook marks the blessing succeeded.
+  router.post('/:id/blessings', requireRole(ROLES.BLESSINGS), requireSubscription({ pool }), async (req, res) => {
+    if (!payments) throw new HttpError(503, 'not_configured', 'Payments are not configured on this server');
+    const bill = await findVisibleBill(pool, req.params.id, req.user);
+    if (bill.status !== 'open') throw conflict('This bill is no longer open for blessings');
+
+    const amountCents = toCents(req.body?.amount);
+    if (!amountCents) throw badRequest('amount must be greater than 0', { field: 'amount' });
+    const remainingCents = toCentsFromDecimal(bill.total) - toCentsFromDecimal(bill.amount_blessed);
+    if (amountCents > remainingCents) {
+      throw badRequest(`amount can be at most ${centsToString(remainingCents)}, what is left on this bill`, { field: 'amount' });
+    }
+    const feeCents = tipServiceFeeCents(amountCents);
+    const chargeCents = amountCents + feeCents;
+
+    const publicId = ulid();
+    const [result] = await pool.execute(
+      `INSERT INTO blessings (public_id, bill_id, blesser_user_id, amount, tip_service_fee, charge_total, currency)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [publicId, bill.id, req.user.id, centsToString(amountCents), centsToString(feeCents), centsToString(chargeCents), bill.currency],
+    );
+
+    let intent;
+    try {
+      intent = await payments.createPaymentIntent({
+        amountCents: chargeCents,
+        currency: bill.currency,
+        metadata: { blessingId: publicId, billId: bill.public_id },
+        idempotencyKey: `blessing-${publicId}`,
+      });
+    } catch {
+      await pool.execute("UPDATE blessings SET status = 'failed' WHERE id = ?", [result.insertId]);
+      throw new HttpError(502, 'payment_error', 'The payment could not be started. Please try again.');
+    }
+    await pool.execute('UPDATE blessings SET payment_intent_id = ? WHERE id = ?', [intent.id, result.insertId]);
+
+    const [rows] = await pool.execute(
+      `SELECT bl.*, b.public_id AS bill_public_id, b.title AS bill_title
+       FROM blessings bl JOIN bills b ON b.id = bl.bill_id WHERE bl.id = ?`,
+      [result.insertId],
+    );
+    res.status(201).json({
+      blessing: serializeBlessing(rows[0]),
+      payment: { clientSecret: intent.clientSecret, publishableKey: payments.publishableKey },
+    });
   });
 
   router.get('/:id/image', async (req, res) => {
@@ -168,7 +219,10 @@ async function findVisibleBill(pool, publicId, user) {
   const row = await findBill(pool, publicId);
   if (!row || row.status === 'removed') throw notFound('Bill not found');
   const isOwner = row.user_id === user.id;
-  if (!isOwner && user.role !== ROLES.BLESSINGS) throw forbidden();
+  if (!isOwner) {
+    if (user.role !== ROLES.BLESSINGS) throw forbidden();
+    if (!(await activeSubscription(pool, user.id))) throw subscriptionRequired();
+  }
   return row;
 }
 
@@ -191,4 +245,8 @@ function detectImageType(buffer) {
     if (['mif1', 'msf1'].includes(brand)) return 'heif';
   }
   return null;
+}
+
+function toCentsFromDecimal(decimalString) {
+  return Math.round(Number(decimalString) * 100);
 }

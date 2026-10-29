@@ -7,6 +7,7 @@ struct BillDetailView: View {
     @State private var bill: Bill?
     @State private var errorMessage: String?
     @State private var showsFullPhoto = false
+    @State private var showsBless = false
 
     var body: some View {
         Group {
@@ -55,6 +56,31 @@ struct BillDetailView: View {
                         } label: {
                             Text("Complete total").bold()
                         }
+                        LabeledContent("Blessed so far", value: bill.amountBlessed.decimal.currency(bill.currency))
+                        LabeledContent("Still needed", value: bill.amountRemaining.decimal.currency(bill.currency))
+                    }
+
+                    if session.currentUser?.role == .blessings, bill.status == .open, bill.amountRemaining.decimal > 0 {
+                        Section {
+                            Button {
+                                showsBless = true
+                            } label: {
+                                Label("Bless this bill", systemImage: "gift.fill")
+                                    .frame(maxWidth: .infinity)
+                                    .bold()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .listRowInsets(EdgeInsets())
+                        }
+                    }
+                }
+                .sheet(isPresented: $showsBless) {
+                    BlessBillView(bill: bill) {
+                        // The payment is confirmed by Stripe's webhook; give it a moment.
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            await load()
+                        }
                     }
                 }
                 .sheet(isPresented: $showsFullPhoto) {
@@ -71,12 +97,14 @@ struct BillDetailView: View {
         }
         .navigationTitle(bill?.title ?? "Bill")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            do {
-                bill = try await session.api.bill(id: billID)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            bill = try await session.api.bill(id: billID)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

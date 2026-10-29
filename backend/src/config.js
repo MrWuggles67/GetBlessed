@@ -17,6 +17,17 @@ export function loadConfig() {
     bcryptRounds: Number(env.BCRYPT_ROUNDS ?? 11),
     uploadDir: env.UPLOAD_DIR ?? new URL('../uploads/', import.meta.url).pathname,
     maxUploadBytes: Number(env.MAX_UPLOAD_BYTES ?? 10 * 1024 * 1024),
+    apple: {
+      bundleId: env.APPLE_BUNDLE_ID ?? 'com.getblessed.app',
+      appAppleId: env.APPLE_APP_ID ? Number(env.APPLE_APP_ID) : undefined,
+      environment: env.APPLE_ENVIRONMENT ?? 'PRODUCTION', // PRODUCTION | SANDBOX | XCODE
+      rootCertsDir: env.APPLE_ROOT_CERTS_DIR,
+    },
+    stripe: {
+      secretKey: env.STRIPE_SECRET_KEY,
+      publishableKey: env.STRIPE_PUBLISHABLE_KEY,
+      webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    },
     db: {
       host: env.DB_HOST ?? '127.0.0.1',
       port: Number(env.DB_PORT ?? 3306),

@@ -7,6 +7,9 @@ options:
 packages:
   BillParser:
     path: BillParser
+  Stripe:
+    url: https://github.com/stripe/stripe-ios-spm
+    from: 24.0.0
 targets:
   GetBlessed:
     type: application
@@ -15,6 +18,9 @@ targets:
       - GetBlessed
     dependencies:
       - package: BillParser
+      - package: Stripe
+        product: StripePaymentSheet
+      - sdk: StoreKit.framework
     info:
       path: GetBlessed/Info.plist
       properties:
@@ -45,6 +51,9 @@ schemes:
     build:
       targets:
         GetBlessed: all
+    run:
+      # Local App Store prices for testing purchases in the Simulator.
+      storeKitConfiguration: GetBlessed.storekit
     test:
       targets:
         - package: BillParser/BillParserTests

@@ -92,6 +92,28 @@ final class APIClient: @unchecked Sendable {
         try await data(for: request("GET", path))
     }
 
+    // MARK: Blessings membership & blessing
+
+    func pricing() async throws -> Pricing {
+        try await send(request("GET", "/api/pricing"))
+    }
+
+    /// Sends a StoreKit 2 transaction (its signed JWS) to the server for verification.
+    func verifyAppleTransaction(_ signedTransaction: String) async throws {
+        struct Ignored: Decodable {}
+        let _: Ignored = try await send(jsonRequest("POST", "/api/subscriptions/apple", body: ["signedTransaction": signedTransaction]))
+    }
+
+    func startBlessing(billID: String, amount: Decimal) async throws -> BlessingCheckout {
+        try await send(jsonRequest("POST", "/api/bills/\(billID)/blessings", body: ["amount": amount.roundedTo().apiString]))
+    }
+
+    func myBlessings() async throws -> [Blessing] {
+        struct Response: Decodable { let blessings: [Blessing] }
+        let response: Response = try await send(request("GET", "/api/blessings/mine"))
+        return response.blessings
+    }
+
     // MARK: Plumbing
 
     private func request(_ method: String, _ path: String, query: [String: String?] = [:]) -> URLRequest {
