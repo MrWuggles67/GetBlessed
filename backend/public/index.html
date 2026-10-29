@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GetBlessed Admin</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<section id="login" class="center">
+  <form id="loginForm" class="card">
+    <h1>Get<span>Blessed</span></h1>
+    <p class="muted">Admin sign in</p>
+    <input id="email" type="email" placeholder="Email" required autocomplete="username">
+    <input id="password" type="password" placeholder="Password" required autocomplete="current-password">
+    <button class="primary">Sign in</button>
+    <p id="loginError" class="error"></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <aside>
+    <h1>Get<span>Blessed</span></h1>
+    <nav>
+      <a href="#dashboard" data-page="dashboard">Dashboard</a>
+      <a href="#users" data-page="users">Users</a>
+      <a href="#bills" data-page="bills">Bills</a>
+      <a href="#blessings" data-page="blessings">Blessings</a>
+      <a href="#settings" data-page="settings">Settings</a>
+    </nav>
+    <button id="logout" class="ghost">Sign out</button>
+  </aside>
+  <main>
+    <header><h2 id="title"></h2><div id="toolbar"></div></header>
+    <div id="content"></div>
+  </main>
+</div>
+<script src="admin.js"></script>
+</body>
+</html>
