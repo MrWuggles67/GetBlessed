@@ -1,0 +1,98 @@
+{
+  "identifier" : "9C1D6E2A",
+  "nonRenewingSubscriptions" : [
+    {
+      "displayPrice" : "104.99",
+      "familyShareable" : false,
+      "internalID" : "6740000003",
+      "localizations" : [
+        {
+          "description" : "Two years of Blessings membership. Does not renew.",
+          "displayName" : "Blessings 2-Year",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.getblessed.app.blessings.twoyear",
+      "referenceName" : "Blessings 2-Year",
+      "type" : "NonRenewingSubscription"
+    }
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6740000000",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21540000",
+      "localizations" : [
+
+      ],
+      "name" : "Blessings Membership",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6740000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Blessings membership, renews monthly.",
+              "displayName" : "Blessings Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.getblessed.app.blessings.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Blessings Monthly",
+          "subscriptionGroupID" : "21540000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "69.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Blessings membership, renews yearly.",
+              "displayName" : "Blessings 1-Year",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.getblessed.app.blessings.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Blessings 1-Year",
+          "subscriptionGroupID" : "21540000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
